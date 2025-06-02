@@ -67,8 +67,16 @@ WorkingDirectory=$FRP_DIR
 WantedBy=multi-user.target
 EOF
 
+echo "[+] 设置并启动 frpc 服务..."
 systemctl daemon-reload
-systemctl enable --now frpc
+systemctl enable frpc
+
+# 尝试启动 frpc，如果失败也不中断脚本
+if ! systemctl start frpc; then
+  echo "⚠️  警告：frpc 启动失败，通过 'journalctl -u frpc -e' 查看原因。"
+else
+  echo "✅ frpc 启动成功"
+fi
 
 # 6. 安装并配置 Hysteria2
 mkdir -p "$HYSTERIA_DIR"
@@ -127,8 +135,16 @@ StandardOutput=append:/var/log/hysteria.log
 StandardError=append:/var/log/hysteria_error.log
 EOF
 
+echo "[+] 设置并启动 frpc 服务..."
 systemctl daemon-reload
-systemctl enable --now hysteria2
+systemctl enable hysteria2
+
+# 尝试启动 hysteria2，如果失败也不中断脚本
+if ! systemctl start hysteria2; then
+  echo "⚠️  警告：hysteria2 启动失败，通过 'journalctl -u hysteria2 -e' 查看原因。"
+else
+  echo "✅ frpc 启动成功"
+fi
 
 # 11. 提示用户输入 Nezha 安装命令
 mkdir -p "$NEZHA_DIR"
