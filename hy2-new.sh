@@ -9,6 +9,9 @@ FRPC_BIN="$FRP_DIR/frpc"
 FRPC_CONF="$FRP_DIR/frpc.toml"
 
 HYSTERIA_DIR="/opt/hysteria"
+HYSTERIA_DIR="/opt/hysteria"
+HY_CONF="$HYSTERIA_DIR/hy2s.yaml"
+HY_SERVICE="hy2s.service"
 NEZHA_DIR="/opt/nezha"
 UUID_FILE="/etc/nezhaclient/uuid.txt"
 KEEPALIVE_DIR="/opt/keepalive"
@@ -95,7 +98,8 @@ fi
 
 # 提取安装信息
 HY_BIN=$(command -v hysteria)
-HY_CONFIG="/etc/hysteria/hy2s.yaml"
+systemctl stop hysteria-server || true
+systemctl disable hysteria-server || true
 (systemctl stop hysteria-server &) >/dev/null 2>&1
 
 # 7. 生成自签证书
@@ -110,7 +114,7 @@ openssl req -new -x509 -days 3650 -nodes \
 PORT=$(shuf -i 20000-40000 -n 1)
 
 # 9. 写入 hysteria config
-cat > "$HY_CONFIG" <<EOF
+cat > "$HY_CONF" <<EOF
 listen: $LOCAL_IP:$PORT
 auth:
   type: password
@@ -130,13 +134,13 @@ transport:
 EOF
 
 # 10. 启用 hysteria2.service
-cat > /etc/systemd/system/hy2s.service <<EOF
+cat >> $HY_SERVICE <<EOF
 [Unit]
 Description=Hysteria2-server
 After=network.target
 
 [Service]
-ExecStart=$HY_BIN server -c $HY_CONFIG
+ExecStart=$HY_BIN server -c $HY_CONF
 Restart=always
 RestartSec=3
 User=root
@@ -182,7 +186,7 @@ TLS_VALUE="false"
 [[ "$NZ_TLS" =~ ^(true|1)$ ]] && TLS_VALUE="true"
 
 # 写入 agent.yaml
-cat > "$NEZHA_DIR/agent.yaml" <<EOF
+cat >> "$NEZHA_DIR/agent.yaml" <<EOF
 client_secret: $NZ_CLIENT_SECRET
 debug: false
 disable_auto_update: false
@@ -309,15 +313,24 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now keepalive
+systemctl enable keepalive
+(systemctl start keepalive &) >/dev/null 2>&1
+sleep 1
+if systemctl is-active --quiet keepalive; then
+  echo "✅ Keepalive 服务启动成功"
+else
+  echo "⚠️ Keepalive 服务启动失败，请检查 'journalctl -u keepalive -e'"
+fi
 
 # 14. 清理临时（如果有 temp_downloads，可按需删除）
 # rm -rf /opt/myclient/temp_downloads
 
-# 15. 显示关键信息
-echo "======================"
-echo "FRPC 已启动，请确认服务端配置正确。"
-echo "Hysteria2 已运行，端口: $PORT，密码 UUID: $UUID"
-echo "Nezha Agent 配置在：$NEZHA_DIR/agent.yaml"
-echo "保活服务已启动，日志：/var/log/keepalive.log"
-echo "======================"
+# ===========================
+# 10. 结束提示
+# ===========================
+echo "=========================="
+echo "🎉 脚本执行完毕，以下是各服务状态："
+echo "  • frpc.service: $(systemctl is-active frpc || echo 'inactive')"
+echo "  • $HY_SERVICE: $(systemctl is-active $HY_SERVICE || echo 'inactive')"
+echo "  • keepalive.service: $(systemctl is-active keepalive || echo 'inactive')"
+echo "=========================="
