@@ -146,10 +146,10 @@ echo "[+] 正在异步启动 hysteria2..."
 (systemctl start hysteria2 &) >/dev/null 2>&1
 
 sleep 1
-if systemctl is-active --quiet frpc; then
+if systemctl is-active --quiet hysteria2; then
   echo "✅ hysteria2 启动成功"
 else
-  echo "⚠️ hysteria2 启动失败，稍后请检查 journalctl -u frpc -e"
+  echo "⚠️ hysteria2 启动失败，稍后请检查 journalctl -u hysteria2 -e"
 fi
 
 # 11. 提示用户输入 Nezha 安装命令
