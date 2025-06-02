@@ -98,7 +98,6 @@ fi
 
 # 提取安装信息
 HY_BIN=$(command -v hysteria)
-systemctl stop hysteria-server || true
 systemctl disable hysteria-server || true
 (systemctl stop hysteria-server &) >/dev/null 2>&1
 
