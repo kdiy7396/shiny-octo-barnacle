@@ -9,7 +9,6 @@ FRPC_BIN="$FRP_DIR/frpc"
 FRPC_CONF="$FRP_DIR/frpc.toml"
 
 HYSTERIA_DIR="/opt/hysteria"
-HYSTERIA_DIR="/opt/hysteria"
 HY_CONF="$HYSTERIA_DIR/hy2s.yaml"
 HY_SERVICE="hy2s.service"
 NEZHA_DIR="/opt/nezha"
@@ -133,7 +132,7 @@ transport:
 EOF
 
 # 10. 启用 hysteria2.service
-cat >> $HY_SERVICE <<EOF
+cat > /etc/systemd/system/$HY_SERVICE <<EOF
 [Unit]
 Description=Hysteria2-server
 After=network.target
