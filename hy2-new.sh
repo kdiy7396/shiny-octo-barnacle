@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # 1. 必要的常量
 FRP_DIR="/home/user/Downloads/frp_0.62.1_linux_amd64"
@@ -17,11 +17,28 @@ if [[ $(id -u) -ne 0 ]]; then
   exit 1
 fi
 
-# 3. 安装依赖（并安装 dig）
+# ========= 安装依赖（只在缺少时） ==========
 install_deps() {
+  echo "[+] 安装基础工具包..."
   apt update -y
-  apt install -y curl wget unzip uuid-runtime jq openssl dnsutils nodejs npm
+  apt install -y curl wget unzip uuid-runtime jq openssl dnsutils
+
+  if ! command -v node &>/dev/null; then
+    echo "[+] 安装 Node.js LTS..."
+    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+    apt install -y nodejs
+  else
+    echo "[*] 已检测到 node：$(node -v)"
+  fi
+
+  if ! command -v npm &>/dev/null; then
+    echo "[+] 安装 npm..."
+    apt install -y npm
+  else
+    echo "[*] 已检测到 npm：$(npm -v)"
+  fi
 }
+
 install_deps
 
 # 4. 生成或读取 UUID
