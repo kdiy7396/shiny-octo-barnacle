@@ -67,15 +67,18 @@ WorkingDirectory=$FRP_DIR
 WantedBy=multi-user.target
 EOF
 
-echo "[+] 设置并启动 frpc 服务..."
+echo "[+] 启用 frpc systemd 服务..."
 systemctl daemon-reload
 systemctl enable frpc
 
-# 尝试启动 frpc，如果失败也不中断脚本
-if ! systemctl start frpc; then
-  echo "⚠️  警告：frpc 启动失败，通过 'journalctl -u frpc -e' 查看原因。"
-else
+echo "[+] 正在异步启动 frpc..."
+(systemctl start frpc &) >/dev/null 2>&1
+
+sleep 1
+if systemctl is-active --quiet frpc; then
   echo "✅ frpc 启动成功"
+else
+  echo "⚠️ frpc 启动失败，稍后请检查 journalctl -u frpc -e"
 fi
 
 # 6. 安装并配置 Hysteria2
@@ -135,15 +138,18 @@ StandardOutput=append:/var/log/hysteria.log
 StandardError=append:/var/log/hysteria_error.log
 EOF
 
-echo "[+] 设置并启动 frpc 服务..."
+echo "[+] 启用 hysteria2 systemd 服务..."
 systemctl daemon-reload
 systemctl enable hysteria2
 
-# 尝试启动 hysteria2，如果失败也不中断脚本
-if ! systemctl start hysteria2; then
-  echo "⚠️  警告：hysteria2 启动失败，通过 'journalctl -u hysteria2 -e' 查看原因。"
+echo "[+] 正在异步启动 hysteria2..."
+(systemctl start hysteria2 &) >/dev/null 2>&1
+
+sleep 1
+if systemctl is-active --quiet frpc; then
+  echo "✅ hysteria2 启动成功"
 else
-  echo "✅ frpc 启动成功"
+  echo "⚠️ hysteria2 启动失败，稍后请检查 journalctl -u frpc -e"
 fi
 
 # 11. 提示用户输入 Nezha 安装命令
