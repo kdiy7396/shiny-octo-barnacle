@@ -1,5 +1,7 @@
 #!/bin/bash
 set -euo pipefail
+trap 'echo "⚠️ 脚本在第 $LINENO 行意外退出。当前命令：$BASH_COMMAND"' ERR
+
 
 # 1. 必要的常量
 FRP_DIR="/home/user/Downloads/frp_0.62.1_linux_amd64"
@@ -84,12 +86,28 @@ fi
 # 6. 安装并配置 Hysteria2
 mkdir -p "$HYSTERIA_DIR"
 cd "$HYSTERIA_DIR"
-HYSTERIA_VER=$(curl -s https://api.github.com/repos/apernet/hysteria/releases/latest | jq -r .tag_name)
-wget -qO hy2.tar.gz https://github.com/apernet/hysteria/releases/download/${HYSTERIA_VER}/hysteria-linux-amd64.tar.gz
+
+echo "[+] 获取 Hysteria 最新版本号..."
+HYSTERIA_VER=$(curl -s https://api.github.com/repos/apernet/hysteria/releases/latest | jq -r .tag_name || echo "")
+if [[ -z "$HYSTERIA_VER" ]]; then
+  echo "❌ 无法获取版本号，curl 或 jq 出问题，或 GitHub API 被限流"
+  exit 1
+fi
+
+echo "[+] 最新版本为：$HYSTERIA_VER"
+echo "[+] 开始下载..."
+
+if ! wget -O hy2.tar.gz "https://github.com/apernet/hysteria/releases/download/${HYSTERIA_VER}/hysteria-linux-amd64.tar.gz"; then
+  echo "❌ 下载失败，URL 无效或网络问题"
+  exit 1
+fi
+
 tar -xzf hy2.tar.gz
 mv hysteria-linux-amd64 hysteria
 chmod +x hysteria
 rm -f hy2.tar.gz
+
+echo "✅ Hysteria 安装成功"
 
 # 7. 生成自签证书
 mkdir -p "$HYSTERIA_DIR/certs"
