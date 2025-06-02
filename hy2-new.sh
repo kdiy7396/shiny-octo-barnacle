@@ -84,30 +84,19 @@ else
 fi
 
 # 6. 安装并配置 Hysteria2
-mkdir -p "$HYSTERIA_DIR"
-cd "$HYSTERIA_DIR"
+# 调用官方安装脚本
+bash <(curl -fsSL https://get.hy2.sh/)
 
-echo "[+] 获取 Hysteria 最新版本号..."
-HYSTERIA_VER=$(curl -s https://api.github.com/repos/apernet/hysteria/releases/latest | jq -r .tag_name || echo "")
-if [[ -z "$HYSTERIA_VER" ]]; then
-  echo "❌ 无法获取版本号，curl 或 jq 出问题，或 GitHub API 被限流"
-  exit 1
+# 检查安装是否成功
+if ! command -v hysteria &> /dev/null; then
+    echo "Hysteria 安装失败，请检查网络连接或安装脚本。"
+    exit 1
 fi
 
-echo "[+] 最新版本为：$HYSTERIA_VER"
-echo "[+] 开始下载..."
-
-if ! wget -O hy2.tar.gz "https://github.com/apernet/hysteria/releases/download/${HYSTERIA_VER}/hysteria-linux-amd64.tar.gz"; then
-  echo "❌ 下载失败，URL 无效或网络问题"
-  exit 1
-fi
-
-tar -xzf hy2.tar.gz
-mv hysteria-linux-amd64 hysteria
-chmod +x hysteria
-rm -f hy2.tar.gz
-
-echo "✅ Hysteria 安装成功"
+# 提取安装信息
+HY_BIN=$(command -v hysteria)
+HY_CONFIG="/etc/hysteria/hy2s.yaml"
+(systemctl stop hysteria-server &) >/dev/null 2>&1
 
 # 7. 生成自签证书
 mkdir -p "$HYSTERIA_DIR/certs"
@@ -121,7 +110,7 @@ openssl req -new -x509 -days 3650 -nodes \
 PORT=$(shuf -i 20000-40000 -n 1)
 
 # 9. 写入 hysteria config
-cat > "$HYSTERIA_DIR/config.yaml" <<EOF
+cat > "$HY_CONFIG" <<EOF
 listen: $LOCAL_IP:$PORT
 auth:
   type: password
@@ -141,13 +130,13 @@ transport:
 EOF
 
 # 10. 启用 hysteria2.service
-cat > /etc/systemd/system/hysteria2.service <<EOF
+cat > /etc/systemd/system/hy2s.service <<EOF
 [Unit]
-Description=Hysteria2 Client
+Description=Hysteria2-server
 After=network.target
 
 [Service]
-ExecStart=$HYSTERIA_DIR/hysteria client -c $HYSTERIA_DIR/config.yaml
+ExecStart=$HY_BIN server -c $HY_CONFIG
 Restart=always
 RestartSec=3
 User=root
@@ -156,18 +145,18 @@ StandardOutput=append:/var/log/hysteria.log
 StandardError=append:/var/log/hysteria_error.log
 EOF
 
-echo "[+] 启用 hysteria2 systemd 服务..."
+echo "[+] 启用 hy2s systemd 服务..."
 systemctl daemon-reload
-systemctl enable hysteria2
+systemctl enable hy2s
 
-echo "[+] 正在异步启动 hysteria2..."
-(systemctl start hysteria2 &) >/dev/null 2>&1
+echo "[+] 正在异步启动 hy2s..."
+(systemctl start hy2s &) >/dev/null 2>&1
 
 sleep 1
-if systemctl is-active --quiet hysteria2; then
-  echo "✅ hysteria2 启动成功"
+if systemctl is-active --quiet hy2s; then
+  echo "✅ hy2s 启动成功"
 else
-  echo "⚠️ hysteria2 启动失败，稍后请检查 journalctl -u hysteria2 -e"
+  echo "⚠️ hy2s 启动失败，稍后请检查 journalctl -u hy2s -e"
 fi
 
 # 11. 提示用户输入 Nezha 安装命令
